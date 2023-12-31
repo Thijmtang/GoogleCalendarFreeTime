@@ -11,7 +11,6 @@ class GoogleCalendarService:
     GOOGLE_DATE_FORMAT = "%Y-%m-%d"
 
     def __init__(self, googleApiClient: GoogleApiClient):
-
         self.googleApiClient = googleApiClient
         self.service = build('calendar', 'v3', credentials=googleApiClient.credentials)
 

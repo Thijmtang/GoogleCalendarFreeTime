@@ -1,11 +1,13 @@
+import ast
 import datetime
+import os
 
 from GoogleCalendarService import GoogleCalendarService
 
 
 class GoogleCalendarUtils:
     @staticmethod
-    def getEventFromDate(events, start: datetime, end: datetime):
+    def getEventFromDate(events, start: datetime, end: datetime) -> list:
         """Filter events based on start date and end date, to reduce number of API calls"""
 
         if events is None:
@@ -41,7 +43,7 @@ class GoogleCalendarUtils:
             minimumTime: datetime.time,
             minimalIntervalBetweenInMinutes: int,
             events: list
-    ):
+    ) -> list:
         """Filter events based on the availability of the user"""
 
         availableDays = {}
@@ -101,3 +103,16 @@ class GoogleCalendarUtils:
             currenIterationDate = currenIterationDate + datetime.timedelta(days=1)
 
         return availableDays
+
+    @staticmethod
+    def getCalendars(self) -> list:
+        if not os.path.exists('calendars.json'):
+            raise Exception('No calendars.json file found!')
+
+        calendars = open('calendars.json', 'r').read()
+        if len(calendars) == 0:
+            raise Exception('No calendars found!')
+
+        calendars = ast.literal_eval(calendars)
+
+        return calendars

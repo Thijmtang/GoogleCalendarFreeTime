@@ -11,18 +11,19 @@ class GoogleApiClient:
         self.credentials = self.authenticate()
 
     def authenticate(self):
-        creds = None
+        credentials = None
         if os.path.exists('token.json'):
-            creds = Credentials.from_authorized_user_file('token.json')
+            credentials = Credentials.from_authorized_user_file('token.json')
 
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+        if not credentials or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file('credentials.json', self.SCOPES)
-                creds = flow.run_local_server(port=0)
+                credentials = flow.run_local_server(port=0)
 
             with open('token.json', 'w') as token:
-                token.write(creds.to_json())
+                token.write(credentials.to_json())
 
-        return creds
+        return credentials
+

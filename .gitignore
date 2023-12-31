@@ -126,5 +126,6 @@ dmypy.json
 
 token.json
 credentials.json
+calendars.json
 
 .idea
