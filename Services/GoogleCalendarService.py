@@ -29,7 +29,6 @@ class GoogleCalendarService:
                     calendarId=calendarId,
                     timeMin=start_datetime.isoformat() + 'Z',
                     timeMax=end_datetime.isoformat() + 'Z',
-                    maxResults=10,
                     singleEvents=True,
                     showDeleted=False,
                     orderBy="startTime",
