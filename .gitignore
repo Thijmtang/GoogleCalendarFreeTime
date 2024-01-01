@@ -127,5 +127,6 @@ dmypy.json
 token.json
 credentials.json
 settings.json
+overview-calendar.xlsx
 
 .idea

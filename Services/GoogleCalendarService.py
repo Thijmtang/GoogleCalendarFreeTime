@@ -42,7 +42,7 @@ class GoogleCalendarService:
         except HttpError as error:
             print(error)
 
-    def getMultipleCalendarEvents(self, calendarIds: list, startDate: datetime, endDate: datetime):
+    def getMultipleCalendarEvents(self, calendarIds: list, startDate: datetime.date, endDate: datetime):
         events = []
 
         for calendarId in calendarIds:

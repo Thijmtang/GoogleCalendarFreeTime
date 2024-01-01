@@ -91,7 +91,7 @@ class GoogleCalendarUtils:
 
                 for bannedKeyword in bannedKeywords:
 
-                    if event['summary'] is None:
+                    if 'summary' not in event:
                         break
 
                     # A banned keyword found in summary
