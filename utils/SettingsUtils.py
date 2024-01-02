@@ -1,4 +1,5 @@
 import ast
+import json
 import os
 import string
 
@@ -11,8 +12,16 @@ class SettingsUtils:
         return SettingsUtils.__getValue("calendars")
 
     @staticmethod
-    def getCalendars() -> list:
-        return SettingsUtils.__getValue("calendars")
+    def setCalendars(calendars: list) -> None:
+        SettingsUtils.getSettings()["calendars"] = calendars
+
+        SettingsUtils.__updateSettings()
+
+    @staticmethod
+    def setSummaryBannedKeywords(calendars: list) -> None:
+        SettingsUtils.getSettings()["calendars"] = calendars
+
+        SettingsUtils.__updateSettings()
 
     @staticmethod
     def getSummaryBannedKeywords() -> list:
@@ -25,6 +34,7 @@ class SettingsUtils:
     @staticmethod
     def getEndDate() -> string:
         return SettingsUtils.__getValue("endDate")
+
     @staticmethod
     def getSettings() -> list:
         # Already loaded the file during runtime, no need to redo
@@ -47,6 +57,18 @@ class SettingsUtils:
     def __getValue(key: string) -> list:
         settings = SettingsUtils.getSettings()
         if settings[key] is None:
-            raise Exception(key + " is not defined within settings.json!")
+            return []
 
         return settings[key]
+
+    @staticmethod
+    def __updateSettings() -> None:
+        oldSettings = SettingsUtils.getSettings()
+        # Writing to sample.json
+        with open('settings.json', 'w') as outfile:
+            json.dump(oldSettings, outfile)
+
+        outfile.close()
+
+        SettingsUtils.Settings = None;
+        SettingsUtils.getSettings()

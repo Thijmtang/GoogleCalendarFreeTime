@@ -46,8 +46,12 @@ class GoogleCalendarService:
         events = []
 
         for calendarId in calendarIds:
-            events = events + self.getEvents(
-                calendarId,
-                startDate, endDate)
+            try:
+                events = events + self.getEvents(
+                    calendarId,
+                    startDate, endDate)
+            except:
+                # Invalid calendar id
+                continue
 
         return events

@@ -1,11 +1,12 @@
 import datetime
+import locale
 import os
 import subprocess
 from typing import Any
 import xlsxwriter
-from Services.GoogleCalendarService import GoogleCalendarService
-from Utils.SettingsUtils import SettingsUtils
-from Utils.TimeUtils import TimeUtils
+from services.GoogleCalendarService import GoogleCalendarService
+from utils.SettingsUtils import SettingsUtils
+from utils.TimeUtils import TimeUtils
 
 
 class GoogleCalendarUtils:
@@ -47,7 +48,7 @@ class GoogleCalendarUtils:
             minimumTime: datetime.time,
             minimalIntervalBetweenInMinutes: int,
             events: list
-    ) -> dict[Any, bool]:
+    ) -> dict[Any, list]:
         """Filter events based on the availability of the user"""
 
         availableDays = {}
@@ -57,7 +58,9 @@ class GoogleCalendarUtils:
             # Convert date into string to be able to use as a key
             dateStringFormat = currenIterationDate.strftime("%d-%m-%Y")
 
-            availableDays[dateStringFormat] = True
+            availableDays[dateStringFormat] = {}
+
+            availableDays[dateStringFormat]['available'] = True
 
             # Filter out the events which are not within given time frame
             currentDateEvents = GoogleCalendarUtils.getEventFromDate(events,
@@ -76,15 +79,16 @@ class GoogleCalendarUtils:
                 # Python is disgusting
                 # Incorrect format response
                 if 'start' not in event or 'end' not in event or dateStringFormat not in availableDays:
+                    events.pop(event)
                     continue
 
                 # Already determined that not available
-                if not availableDays[dateStringFormat]:
+                if not availableDays[dateStringFormat]['available']:
                     break
 
                 # All day event
                 if 'dateTime' not in event['start']:
-                    availableDays[dateStringFormat] = False
+                    availableDays[dateStringFormat]['available'] = False
                     continue
 
                 bannedKeywords = SettingsUtils.getSummaryBannedKeywords()
@@ -96,7 +100,7 @@ class GoogleCalendarUtils:
 
                     # A banned keyword found in summary
                     if event['summary'].find(bannedKeyword) != -1:
-                        availableDays[dateStringFormat] = False
+                        availableDays[dateStringFormat]['available'] = False
                         break
 
                 # Not a all day event
@@ -115,12 +119,15 @@ class GoogleCalendarUtils:
 
                 # Not enough time in between
                 if minutes_difference <= minimalIntervalBetweenInMinutes:
-                    availableDays[dateStringFormat] = False
+                    availableDays[dateStringFormat]['available'] = False
+
+            availableDays[dateStringFormat]['events'] = currentDateEvents
 
         return availableDays
 
     @staticmethod
-    def createExcel(excelFileName, days: dict[Any, bool], minimumTime, minimalIntervalBetween):
+    def createExcel(excelFileName, days: dict[Any, list], minimumTime, minimalIntervalBetween):
+
         if os.path.exists(excelFileName):
             subprocess.call("TASKKILL /F /IM excel.exe", shell=True)
 
@@ -132,8 +139,13 @@ class GoogleCalendarUtils:
         bold = workbook.add_format({"bold": True})
 
         i = 1
+        locale.setlocale(locale.LC_ALL, "nl_NL")
 
-        for day, available in days.items():
+        for day, dayObject in days.items():
+
+            available = dayObject['available']
+            events = dayObject['events']
+
             color = 'red'
             if available:
                 color = 'green'
@@ -144,6 +156,28 @@ class GoogleCalendarUtils:
 
             worksheet.write("A" + str(i), date.strftime('%d-%m-%Y %A', ), cell_format)
             worksheet.write("B" + str(i), available)
+
+            eventText = ''
+            for event in events:
+                dateTimeFormat = GoogleCalendarService.GOOGLE_DATETIME_FORMAT
+                keyValue = 'dateTime'
+
+                # All day event, fuck your freetime
+                if 'dateTime' not in event['start']:
+                    dateTimeFormat = GoogleCalendarService.GOOGLE_DATE_FORMAT
+                    keyValue = 'date'
+
+                eventStartDate = datetime.datetime.strptime(event['start'][keyValue], dateTimeFormat)
+                eventEndDate = datetime.datetime.strptime(event['end'][keyValue], dateTimeFormat)
+
+                eventText = event['summary']
+                eventText += ' start op ' + eventStartDate.strftime("%d-%m-%Y %H:%M:%S")
+                eventText += ' eindigt op ' + eventEndDate.strftime("%d-%m-%Y %H:%M:%S")
+
+                i += 1
+                worksheet.write("C" + str(i), eventText)
+
+                # eventText += '& CHAR(10) &'
 
             # sunday
             if date.weekday() == 6:
