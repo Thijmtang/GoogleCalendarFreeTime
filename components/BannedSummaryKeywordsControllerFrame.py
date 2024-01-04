@@ -1,3 +1,5 @@
+from functools import partial
+
 import customtkinter
 from CTkMessagebox import CTkMessagebox
 
@@ -19,10 +21,10 @@ class BannedSummaryKeywordsController(customtkinter.CTkFrame):
         def addNewKeyword():
             keywords = SettingsUtils.getSummaryBannedKeywords()
 
-            dialog = customtkinter.CTkInputDialog(text="Enter a keyword u like to define a day as an all day event", title="Add new keyword")
+            dialog = customtkinter.CTkInputDialog(title="Add new keyword", text="")
 
             dialog.geometry(
-                ScreenUtils.getGeometry(dialog.winfo_width(), dialog.winfo_height(), screen_width, screen_height))
+                ScreenUtils.getGeometry(720, dialog.winfo_height(), screen_width, screen_height))
             text = dialog.get_input()  # waits for input
 
             if text is None or text == "":
@@ -50,11 +52,12 @@ class BannedSummaryKeywordsController(customtkinter.CTkFrame):
                                 option_1="Cancel",
                                 icon="info")
 
-            if msg.get() == "Cancel":
+            if msg.get() != "Yes":
                 return
 
             keywords.remove(keyword)
             SettingsUtils.setSummaryBannedKeywords(keywords)
+
             renderKeywords()
 
         def renderKeywords():
@@ -69,7 +72,7 @@ class BannedSummaryKeywordsController(customtkinter.CTkFrame):
                                                       , corner_radius=100)
 
                 button = customtkinter.CTkButton(master=keywordFrame, text="Delete",
-                                                 command=lambda: confirmDelete(keyword))
+                                                 command=partial(confirmDelete, keyword))
 
                 button.pack(side=customtkinter.LEFT, padx=20, pady=20)
                 keywordLabel.pack(side=customtkinter.LEFT, padx=20, pady=20)

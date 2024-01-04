@@ -2,11 +2,12 @@ import ast
 import json
 import os
 import string
+from typing import Any, Dict
 
 
 class SettingsUtils:
     Settings = None
-
+    FILEPATH = 'settings.json'
     @staticmethod
     def getCalendars() -> list:
         return SettingsUtils.__getValue("calendars")
@@ -18,13 +19,13 @@ class SettingsUtils:
         SettingsUtils.__updateSettings()
 
     @staticmethod
-    def setSummaryBannedKeywords(calendars: list) -> None:
-        SettingsUtils.getSettings()["calendars"] = calendars
+    def setSummaryBannedKeywords(keywords: list) -> None:
+        SettingsUtils.getSettings()["summaryKeywords"] = keywords
 
         SettingsUtils.__updateSettings()
 
     @staticmethod
-    def getSummaryBannedKeywords() -> list:
+    def getSummaryBannedKeywords() -> dict[Any, Any]:
         return SettingsUtils.__getValue("summaryKeywords")
 
     @staticmethod
@@ -36,27 +37,31 @@ class SettingsUtils:
         return SettingsUtils.__getValue("endDate")
 
     @staticmethod
-    def getSettings() -> list:
+    def getSettings() -> dict[str, Any]:
         # Already loaded the file during runtime, no need to redo
         if SettingsUtils.Settings is not None:
             return SettingsUtils.Settings
 
-        if not os.path.exists('./settings.json'):
-            raise Exception('No settings.json file found!')
+        if not os.path.exists('./'+SettingsUtils.FILEPATH):
+            SettingsUtils.reset()
+            # raise Exception('No settings.json file found!')
 
         settings = open('./settings.json', 'r').read()
-        if len(settings) == 0:
-            raise Exception('settings.json is not configured properly')
+        # if len(settings) == 0:
+        #     raise Exception('settings.json is not configured properly')
 
-        SettingsUtils.Settings = ast.literal_eval(settings)
 
-        return SettingsUtils.Settings
+        try:
+            SettingsUtils.Settings = ast.literal_eval(settings)
+            return SettingsUtils.Settings
+        except:
+            SettingsUtils.reset()
+            return SettingsUtils.getSettings()
 
-    # Waarom werkt private zo PYTHON?????  🤢
     @staticmethod
     def __getValue(key: string) -> list:
         settings = SettingsUtils.getSettings()
-        if settings[key] is None:
+        if key not in settings:
             return []
 
         return settings[key]
@@ -64,11 +69,17 @@ class SettingsUtils:
     @staticmethod
     def __updateSettings() -> None:
         oldSettings = SettingsUtils.getSettings()
+        SettingsUtils.Settings = None
+
         # Writing to sample.json
         with open('settings.json', 'w') as outfile:
             json.dump(oldSettings, outfile)
 
         outfile.close()
 
-        SettingsUtils.Settings = None;
         SettingsUtils.getSettings()
+
+    @staticmethod
+    def reset():
+        with open('settings.json', 'w') as json_file:
+            json.dump({}, json_file)

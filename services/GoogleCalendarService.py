@@ -1,5 +1,6 @@
 import datetime
 import string
+from typing import Any
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -42,16 +43,32 @@ class GoogleCalendarService:
         except HttpError as error:
             print(error)
 
-    def getMultipleCalendarEvents(self, calendarIds: list, startDate: datetime.date, endDate: datetime):
+    def getMultipleCalendarEvents(self, calendars: dict[str, Any], startDate: datetime.date, endDate: datetime):
         events = []
 
-        for calendarId in calendarIds:
+        for calendar in calendars:
             try:
                 events = events + self.getEvents(
-                    calendarId,
+                    calendar,
                     startDate, endDate)
             except:
                 # Invalid calendar id
                 continue
 
         return events
+
+    def getCalendars(self):
+        page_token = None
+        while True:
+            calendars = []
+            calendar_list = self.service.calendarList().list(pageToken=page_token).execute()
+            for calendar_list_entry in calendar_list['items']:
+                calendars.append(calendar_list_entry)
+            if not page_token:
+                return calendars
+
+
+
+    def getCalendar(self, calendarId: str):
+        calendar = self.service.calendars().get(calendarId=calendarId).execute()
+        return calendar

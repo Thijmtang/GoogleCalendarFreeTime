@@ -1,59 +1,26 @@
 import datetime
 import os
-import subprocess
-
+from GoogleApiClient import GoogleApiClient
 from CTkMessagebox import CTkMessagebox
 from tkcalendar import DateEntry
-from GoogleApiClient import GoogleApiClient
 from utils.GoogleCalendarUtils import GoogleCalendarUtils
 from services.GoogleCalendarService import GoogleCalendarService
 from utils.ScreenUtils import ScreenUtils
 from utils.SettingsUtils import SettingsUtils
 import customtkinter
-
-from components.SettingsTopLevel import SettingsTopLevel
+from components.SettingsFrame import SettingsTopLevel
 from components.ShowEventsTopLevel import ShowEventsTopLevel
-
-customtkinter.set_appearance_mode('System')
-customtkinter.set_default_color_theme('blue')
-
-app = customtkinter.CTk()
-
-width = 1280  # Width
-height = 720  # Height
-screen_width = app.winfo_screenwidth()  # Width of the screen
-screen_height = app.winfo_screenheight()  # Height of the screen
-
-app.geometry(ScreenUtils.getGeometry(width, height, screen_width, screen_height))
-app.title('Free time check')
-
-navbar = customtkinter.CTkFrame(master=app, width=width, height=height)
-navbar.pack(side=customtkinter.TOP)
-
-labelStart = customtkinter.CTkLabel(master=navbar, text='Start date:')
-labelStart.pack(padx=20, side=customtkinter.LEFT)
-
-calendarEntryStart = DateEntry(navbar, width=30, bg="darkblue", fg="white", selectmode='day', date_pattern="dd-mm-y", )
-calendarEntryStart.pack(padx=20, pady=20, side=customtkinter.LEFT)
-
-labelEnd = customtkinter.CTkLabel(master=navbar, text='End date:')
-labelEnd.pack(padx=20, side=customtkinter.LEFT)
-
-calendarEntryEnd = DateEntry(navbar, width=30, bg="darkblue", fg="white", selectmode='day', date_pattern="dd-mm-y", )
-calendarEntryEnd.pack(padx=20, side=customtkinter.LEFT)
-
-body = customtkinter.CTkScrollableFrame(master=app, width=width, height=height, )
-
-body.pack(side=customtkinter.TOP, pady=10)
-
-dates = []
-
 
 def fetchCalendarDays(startDate: datetime, endDate: datetime):
     googleApiClient = GoogleApiClient()
     googleCalendarService = GoogleCalendarService(googleApiClient)
 
-    events = googleCalendarService.getMultipleCalendarEvents(SettingsUtils.getCalendars(), startDate, endDate)
+    calendars = SettingsUtils.getCalendars()
+
+    if len(calendars) == 0:
+        return
+
+    events = googleCalendarService.getMultipleCalendarEvents(calendars, startDate, endDate)
 
     minimumTime = datetime.time(7, 30)
     minimalIntervalBetween = 120
@@ -69,6 +36,8 @@ def fetchCalendarDays(startDate: datetime, endDate: datetime):
 
 
 def submit():
+    clearBody()
+
     startDate = calendarEntryStart.get_date()
     endDate = calendarEntryEnd.get_date()
 
@@ -93,27 +62,35 @@ def submit():
     # generate all days within time period
     days = fetchCalendarDays(startDate, endDate)
 
-    for widget in body.winfo_children():
-        widget.destroy()
+    if days is None:
+        CTkMessagebox(title="No calendars available", message="Configure calendars within settings", icon="cancel")
+        return
 
-    progressbar = customtkinter.CTkProgressBar(body, orientation="horizontal")
-    progressbar.configure(mode="determinate_speed")
-    progressbar.start()
-    progressbar.pack(side=customtkinter.BOTTOM)
+    availableDaysScroll = customtkinter.CTkScrollableFrame(body, width, height)
+    availableDaysScroll.pack()
 
-    tksleep(app, 1)
+    # progressbar = customtkinter.CTkProgressBar(availableDaysScroll, orientation="horizontal", mode='indeterminate', progress_color='green')
+    # progressbar.configure(mode="indeterminate_speed")
+    progressbar = customtkinter.CTkProgressBar(availableDaysScroll, progress_color='green')
+    progressbar.pack(side=customtkinter.TOP, fill=customtkinter.BOTH)
+    progressbar.set(0)
+    # progressbar.start()
+    # progressbar.pack(side=customtkinter.TOP)
+    tksleep(app, .1)
+
+    i = 0
+    totalCount = len(days)
 
     for day, dayObject in days.items():
         available = dayObject['available']
         events = dayObject['events']
-        progressbar.step()
 
         date = datetime.datetime.strptime(day, "%d-%m-%Y")
 
-        calendarDayFrame = customtkinter.CTkFrame(master=body, border_width=1)
+        calendarDayFrame = customtkinter.CTkFrame(master=availableDaysScroll, border_width=1)
 
         dateLabel = customtkinter.CTkLabel(master=calendarDayFrame, text=date.strftime('%d-%m-%Y %A'))
-        dateLabel.pack(side=customtkinter.LEFT)
+        dateLabel.pack(side=customtkinter.LEFT, padx=10)
 
         # Decide color and status of availability
         color = 'red'
@@ -123,18 +100,19 @@ def submit():
             status = 'Available'
 
         availableLabel = customtkinter.CTkLabel(master=calendarDayFrame, fg_color=color, text=status, corner_radius=100)
-        availableLabel.pack(side=customtkinter.LEFT, padx=20)
+        availableLabel.pack(side=customtkinter.LEFT)
 
-        calendarDayFrame.pack(side=customtkinter.TOP, padx=20, pady=20, anchor='w')
+        calendarDayFrame.pack(side=customtkinter.TOP, padx=20, pady=5, anchor='w', fill=customtkinter.BOTH,
+                              expand=True)
         if date.weekday() == 6:
-            divider = customtkinter.CTkLabel(master=body, text="", )
-            divider.pack(side=customtkinter.TOP, padx=5, pady=5, anchor='w')
+            divider = customtkinter.CTkLabel(master=availableDaysScroll, text="", )
+            divider.pack(side=customtkinter.TOP, padx=5, pady=20, anchor='w')
 
         # if len(events) == 0:
         #     continue
 
         eventsAlert = customtkinter.CTkFrame(master=calendarDayFrame)
-        eventsAlert.pack(padx=10, pady=10, )
+        eventsAlert.pack(padx=10, pady=10, side=customtkinter.RIGHT)
 
         eventCountLabel = customtkinter.CTkLabel(master=eventsAlert, text='Events: ' + str(len(events)),
                                                  font=('Helvetica', 16, 'bold'))
@@ -159,35 +137,57 @@ def submit():
             availableLabel = customtkinter.CTkLabel(master=eventsAlert, text=eventText)
             availableLabel.pack(side=customtkinter.TOP, anchor='w', padx=10)
 
+        # buttonShowDay = customtkinter.CTkButton(master=calendarDayFrame)
+        # buttonShowDay.pack(padx=10, pady=10, side=customtkinter.LEFT)
+
+        if i % 15:
+            # Sleep to show progressbar step increase
+            tksleep(app, .001)
+            pbValue = i / totalCount
+            progressbar.set(pbValue)
+
+        i += 1
+
     # Remove progressbar
-    body.winfo_children()[0].destroy()
+    #     progressbar.destroy()
+    availableDaysScroll.winfo_children()[0].destroy()
 
 
 def exportExcel():
-    startDate = calendarEntryStart.get_date()
-    endDate = calendarEntryEnd.get_date()
+    global exportFile
+    # startDate = calendarEntryStart.get_date()
+    # endDate = calendarEntryEnd.get_date()
+    #
+    # days = fetchCalendarDays(startDate, endDate)
+    #
+    # if days is None:
+    #     CTkMessagebox(title="No calendars available", message="Configure calendars within settings", icon="cancel")
+    #     return
+    #
+    # minimumTime = datetime.time(7, 30)
+    # minimalIntervalBetween = 120
+    #
+    # excelFileName = "overview-calendar.xlsx"
+    #
+    # if os.path.exists(excelFileName):
+    #     subprocess.call("TASKKILL /F /IM excel.exe", shell=True)
+    #
+    # GoogleCalendarUtils.createExcel(excelFileName, days, minimumTime, minimalIntervalBetween)
+    # # Launch xlss file with OS default application
+    # os.startfile(excelFileName)
 
-    days = fetchCalendarDays(startDate, endDate)
-    minimumTime = datetime.time(7, 30)
-    minimalIntervalBetween = 120
-
-    excelFileName = "overview-calendar.xlsx"
-
-    if os.path.exists(excelFileName):
-        subprocess.call("TASKKILL /F /IM excel.exe", shell=True)
-
-        GoogleCalendarUtils.createExcel(excelFileName, days, minimumTime, minimalIntervalBetween)
-        # Launch xlss file with OS default application
-        os.startfile(excelFileName)
 
 def showSettings():
-    settingToplevel = SettingsTopLevel(app)
+    clearBody()
 
-    settingToplevel.geometry(ScreenUtils.getGeometry(width, height, screen_width, screen_height))
+    settingToplevel = SettingsTopLevel(body, width, height)
+    settingToplevel.pack(side=customtkinter.TOP, fill=customtkinter.BOTH, expand=True)
 
-    tksleep(app, .1)
+    # settingToplevel.geometry(ScreenUtils.getGeometry(width, height, screen_width, screen_height))
 
-    settingToplevel.focus()
+    # tksleep(app, .1)
+
+    # settingToplevel.focus()
 
 
 def tksleep(self, time: float) -> None:
@@ -214,7 +214,51 @@ def showEvents(events: list):
 def logOut():
     if os.path.exists("token.json"):
         os.remove("token.json")
+        SettingsUtils.reset()
 
+
+
+def clearBody():
+    for widget in body.winfo_children():
+        widget.destroy()
+
+
+customtkinter.set_appearance_mode('System')
+customtkinter.set_default_color_theme('blue')
+
+app = customtkinter.CTk()
+
+width = 1280  # Width
+height = 720  # Height
+screen_width = app.winfo_screenwidth()  # Width of the screen
+screen_height = app.winfo_screenheight()  # Height of the screen
+
+app.geometry(ScreenUtils.getGeometry(width, height, screen_width, screen_height))
+app.maxsize(width, height)
+app.minsize(width, height)
+
+app.title('Free time check')
+
+navbar = customtkinter.CTkFrame(master=app, width=width, height=height)
+navbar.pack(side=customtkinter.TOP)
+
+labelStart = customtkinter.CTkLabel(master=navbar, text='Start date:')
+labelStart.pack(padx=20, side=customtkinter.LEFT)
+
+calendarEntryStart = DateEntry(navbar, width=30, bg="darkblue", fg="white", selectmode='day', date_pattern="dd-mm-y", )
+calendarEntryStart.pack(padx=20, pady=20, side=customtkinter.LEFT)
+
+labelEnd = customtkinter.CTkLabel(master=navbar, text='End date:')
+labelEnd.pack(padx=20, side=customtkinter.LEFT)
+
+calendarEntryEnd = DateEntry(navbar, width=30, bg="darkblue", fg="white", selectmode='day', date_pattern="dd-mm-y", )
+calendarEntryEnd.set_date(datetime.date.today() + datetime.timedelta(days=7))
+calendarEntryEnd.pack(padx=20, side=customtkinter.LEFT)
+
+body = customtkinter.CTkFrame(master=app, width=width, height=height, )
+
+body.pack(side=customtkinter.TOP, pady=10, expand=True, fill="both", )
+dates = []
 
 # Navbar function buttons wrapper
 buttonFrame = customtkinter.CTkFrame(master=navbar)
@@ -223,7 +267,7 @@ buttonFrame.pack(padx=20, side=customtkinter.RIGHT)
 button = customtkinter.CTkButton(master=buttonFrame, text="Check free time", command=submit)
 button.pack(padx=5, side=customtkinter.LEFT)
 
-excelButton = customtkinter.CTkButton(master=buttonFrame, text="Export to xls.format", command=lambda: exportExcel())
+excelButton = customtkinter.CTkButton(master=buttonFrame, text="Export to xls.format", command=exportExcel)
 excelButton.pack(padx=5, side=customtkinter.LEFT)
 
 settingButton = customtkinter.CTkButton(master=buttonFrame, text="Settings", command=showSettings)
