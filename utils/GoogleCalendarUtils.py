@@ -128,8 +128,6 @@ class GoogleCalendarUtils:
     @staticmethod
     def createExcel(excelFileName, days: dict[Any, list], minimumTime, minimalIntervalBetween):
 
-        if os.path.exists(excelFileName):
-            subprocess.call("TASKKILL /F /IM excel.exe", shell=True)
 
         # Create an new Excel file and add a worksheet.
         workbook = xlsxwriter.Workbook(excelFileName)
@@ -139,7 +137,6 @@ class GoogleCalendarUtils:
         bold = workbook.add_format({"bold": True})
 
         i = 1
-        locale.setlocale(locale.LC_ALL, "nl_NL")
 
         for day, dayObject in days.items():
 

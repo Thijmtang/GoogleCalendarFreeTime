@@ -1,5 +1,7 @@
 import datetime
 import os
+import subprocess
+
 from GoogleApiClient import GoogleApiClient
 from CTkMessagebox import CTkMessagebox
 from tkcalendar import DateEntry
@@ -129,7 +131,7 @@ def submit():
             eventStartDate = datetime.datetime.strptime(event['start'][keyValue], dateTimeFormat)
             eventEndDate = datetime.datetime.strptime(event['end'][keyValue], dateTimeFormat)
 
-            eventText = event['summary'] + ' '
+            eventText = '\u2022 ' + event['summary'] + ' '
             eventText += eventStartDate.strftime("%d-%m-%Y %H:%M:%S")
             eventText += " - "
             eventText += eventEndDate.strftime("%d-%m-%Y %H:%M:%S")
@@ -154,27 +156,26 @@ def submit():
 
 
 def exportExcel():
-    global exportFile
-    # startDate = calendarEntryStart.get_date()
-    # endDate = calendarEntryEnd.get_date()
+    startDate = calendarEntryStart.get_date()
+    endDate = calendarEntryEnd.get_date()
+
+    days = fetchCalendarDays(startDate, endDate)
+
+    if days is None:
+        CTkMessagebox(title="No calendars available", message="Configure calendars within settings", icon="cancel")
+        return
+
+    minimumTime = datetime.time(7, 30)
+    minimalIntervalBetween = 120
     #
-    # days = fetchCalendarDays(startDate, endDate)
+    excelFileName = "overview-calendar.xlsx"
     #
-    # if days is None:
-    #     CTkMessagebox(title="No calendars available", message="Configure calendars within settings", icon="cancel")
-    #     return
-    #
-    # minimumTime = datetime.time(7, 30)
-    # minimalIntervalBetween = 120
-    #
-    # excelFileName = "overview-calendar.xlsx"
-    #
-    # if os.path.exists(excelFileName):
-    #     subprocess.call("TASKKILL /F /IM excel.exe", shell=True)
-    #
-    # GoogleCalendarUtils.createExcel(excelFileName, days, minimumTime, minimalIntervalBetween)
-    # # Launch xlss file with OS default application
-    # os.startfile(excelFileName)
+    if os.path.exists(excelFileName):
+        subprocess.call("TASKKILL /F /IM excel.exe", shell=True)
+
+    GoogleCalendarUtils.createExcel(excelFileName, days, minimumTime, minimalIntervalBetween)
+    # Launch xlss file with OS default application
+    os.startfile(excelFileName)
 
 
 def showSettings():
